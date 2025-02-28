@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Treasure Hunt Quiz</title>
+    <link rel="stylesheet" href="Stylesheet.css">
+</head>
+<body>
+
+<h1>Treasure Hunt Quiz</h1>
+<p id="quizInfo">Loading quiz...</p>
+
+<div id="questionContainer" style="display:none;">
+    <h2 id="questionText"></h2>
+    <div id="answerOptions"></div>
+    
+    <input type="text" id="answerInput" placeholder="Type your answer">
+    <button id="submitAnswer">Submit Answer</button>
+    <button id="skipQuestion" style="display:none;">Skip Question</button>
+</div>
+
+<p id="score">Score: 0</p>
+<button id="exitQuiz">Exit Quiz</button>
+
+<script>
+    let sessionId = new URLSearchParams(window.location.search).get("session");
+
+    if (!sessionId) {
+        alert("Session ID is missing. Please start a quiz first.");
+        window.location.href = "index.html";
+    } else {
+        document.getElementById("quizInfo").innerText = "Session ID: " + sessionId;
+        loadQuestion();
+    }
+
+    function loadQuestion() {
+        fetch(`https://codecyprus.org/th/api/question?session=${sessionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "OK") {
+                if (data.completed) {
+                    alert("Congratulations! You've completed the quiz.");
+                    window.location.href = "leaderboard.html?session=" + sessionId;
+                    return;
+                }
+
+                document.getElementById("questionContainer").style.display = "block";
+                document.getElementById("questionText").innerHTML = data.questionText;
+                
+                let answerOptionsDiv = document.getElementById("answerOptions");
+                answerOptionsDiv.innerHTML = "";
+
+                if (data.questionType === "MCQ") {
+                    ["A", "B", "C", "D"].forEach(option => {
+                        let btn = document.createElement("button");
+                        btn.textContent = option;
+                        btn.onclick = () => submitAnswer(option);
+                        answerOptionsDiv.appendChild(btn);
+                    });
+                } else {
+                    document.getElementById("answerInput").style.display = "inline";
+                    document.getElementById("submitAnswer").style.display = "inline";
+                }
+
+                document.getElementById("skipQuestion").style.display = data.canBeSkipped ? "inline" : "none";
+
+                if (data.requiresLocation) {
+                    getLocation();
+                }
+            } else {
+                alert("Error fetching question: " + data.errorMessages.join(", "));
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    function submitAnswer(answer = null) {
+        if (!answer) {
+            answer = document.getElementById("answerInput").value;
+        }
+        if (!answer.trim()) {
+            alert("Please enter an answer!");
+            return;
+        }
+
+        fetch(`https://codecyprus.org/th/api/answer?session=${sessionId}&answer=${encodeURIComponent(answer)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "OK") {
+                alert(data.message || (data.correct ? "Correct!" : "Wrong!"));
+                updateScore();
+                loadQuestion();
+            } else {
+                alert("Error submitting answer: " + data.errorMessages.join(", "));
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    function skipQuestion() {
+        fetch(`https://codecyprus.org/th/api/skip?session=${sessionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "OK") {
+                alert(data.message || "Skipped question.");
+                updateScore();
+                loadQuestion();
+            } else {
+                alert("Cannot skip this question.");
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    function updateScore() {
+        fetch(`https://codecyprus.org/th/api/score?session=${sessionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "OK") {
+                document.getElementById("score").innerText = "Score: " + data.score;
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    }
+
+    function getLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(position => {
+                fetch(`https://codecyprus.org/th/api/location?session=${sessionId}&latitude=${position.coords.latitude}&longitude=${position.coords.longitude}`)
+                .then(response => response.json())
+                .then(data => console.log("Location updated:", data))
+                .catch(error => console.error("Error:", error));
+            }, error => {
+                console.error("Error getting location:", error);
+            });
+        } else {
+            alert("Geolocation is not supported by this browser.");
+        }
+    }
+
+    document.getElementById("submitAnswer").addEventListener("click", () => submitAnswer());
+    document.getElementById("skipQuestion").addEventListener("click", skipQuestion);
+    document.getElementById("exitQuiz").addEventListener("click", () => {
+        window.location.href = "index.html";
+    });
+</script>
+
+</body>
+</html>
