@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Home Page</title>
+    <link rel="stylesheet" href="Stylesheet.css">
+</head>
+<body>
+<h1>Welcome To Team I's Treasure Hunt Quiz!</h1>
+
+<div id="Ruleset">
+    <ul>
+        <label>Rules regarding the quiz:</label>
+        <li>This Quiz must be taken in one attempt.</li><br>
+        <li>You will need to answer several questions of different types. Ex. Multiple-Choice, Direct Answer etc...</li><br>
+        <li>You will need to have Location Share Active throughout the quiz.</li><br>
+        <li>You will need to have access to your camera as some questions will request for you to scan a QR code.</li><br>
+    </ul>
+</div>
+
+<br>
+<!-- Select Quiz Button -->
+<input type="button" id="Button" value="Select a quiz">
+<div id="quizList"></div> <!-- This is where the available quizzes will be displayed -->
+
+<br><br><br>
+<div id="Names">
+    <p>This Treasure Hunt quiz was created by:</p>
+    <ul>
+        <li>George Kyriakou</li>
+        <li>Michael</li>
+        <li>Marios</li>
+        <li>Sharafi Ali</li>
+    </ul>
+</div>
+
+<p>Learn more about us through our Twitter Page!</p>
+<a href="https://twitter.com/@Uclan_TeamI?ref_src=twsrc%5Etfw" class="twitter-follow-button" data-show-count="false">Follow @Uclan_TeamI</a>
+<script async src="https://platform.twitter.com/widgets.js" charset="utf-8"></script>
+
+<script>
+    document.getElementById("Button").addEventListener("click", function() {
+        fetch("https://codecyprus.org/th/api/list")
+        .then(response => response.json())  // Convert response to JSON
+        .then(data => {
+            if (data.status === "OK") {
+                const quizListDiv = document.getElementById("quizList");
+                quizListDiv.innerHTML = "<h2>Select a Quiz:</h2>"; // Title for quizzes
+                
+                data.treasureHunts.forEach(quiz => {
+                    const quizButton = document.createElement("button");
+                    quizButton.textContent = quiz.name;
+                    quizButton.addEventListener("click", function() {
+                        startQuiz(quiz.uuid);  // Start quiz with selected ID
+                    });
+                    quizListDiv.appendChild(quizButton);
+                    quizListDiv.appendChild(document.createElement("br"));
+                });
+            } else {
+                alert("Error fetching quizzes: " + data.errorMessages.join(", "));
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    });
+
+    function startQuiz(quizId) {
+        const playerName = prompt("Enter your name:"); // Get player's name
+        if (!playerName) return;
+
+        const appName = "TeamI_TreasureHunt"; // Custom app name
+
+        fetch(`https://codecyprus.org/th/api/start?player=${playerName}&app=${appName}&treasure-hunt-id=${quizId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === "OK") {
+                alert(`Quiz Started! Session ID: ${data.session}`);
+                window.location.href = `quiz.html?session=${data.session}`; // Redirect to quiz page
+            } else {
+                alert("Error starting quiz: " + data.errorMessages.join(", "));
+            }
+        })
+        .catch(error => console.error("Error:", error));
+    }
+</script>
+
+</body>
+</html>
